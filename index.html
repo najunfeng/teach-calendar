@@ -165,7 +165,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 <div class="stats-bar" id="statsBar">
   <div class="stats-item">📗 白天班课+一对二: <span class="num" id="dayGroupCount">0</span>h</div>
   <div class="stats-item">📘 白天一对一: <span class="num" id="dayOneOnOneCount">0</span>h</div>
-  <div class="stats-item">🌙 晚间: <span class="num" id="nightCount">0</span>h</div>
+  <div class="stats-item">🌙 晚课: <span class="num" id="nightCount">0</span>h</div>
 </div>
 
 <!-- 蒙版 -->
@@ -380,9 +380,9 @@ const COURSES = ['办公', 'WPS二级', 'CAD', '3DMax', '酷家乐', '草图', '
 const COURSE_TYPES = ['班课', '一对一', '一对二'];
 const DURATIONS = ['1小时', '2小时', '2.5小时', '3小时'];
 const CAMPUSES = ['铁西', '和平', '皇姑'];
-const SLOTS = ['am', 'pm', 'night'];
-const SLOT_NAMES = { am: '上午', pm: '下午', night: '晚上' };
-const SLOT_ICONS = { am: '🌅', pm: '☀️', night: '🌙' };
+const SLOTS = ['am', 'pm', 'extra', 'night'];
+const SLOT_NAMES = { am: '上午', pm: '下午', extra: '加课', night: '晚课' };
+const SLOT_ICONS = { am: '🌅', pm: '☀️', extra: '➕', night: '🌙' };
 
 let currentDate = new Date();
 let currentYear, currentMonth;
@@ -563,10 +563,10 @@ function splitRecordHours(record) {
     const totalHours = parseDuration(record.duration);
     const slot = getRecordSlot(record);
     if (slot === 'night') {
-      // 晚间 slot → 全部算 17:30 后
+      // 晚课 slot → 全部算 17:30 后
       after1730 = totalHours;
     } else {
-      // 上午/下午 → 全部算 17:30 前
+      // 上午/下午/加课 → 全部算 17:30 前
       before1730 = totalHours;
     }
   }
@@ -622,7 +622,7 @@ function showStats() {
   let msg = `📊 教学日历统计\n\n`;
   msg += `📗 白天 班课+一对二: ${s.dayGroupHours.toFixed(1)}小时\n`;
   msg += `📘 白天 一对一: ${s.dayOneOnOneHours.toFixed(1)}小时\n`;
-  msg += `🌙 晚间: ${s.nightHours.toFixed(1)}小时\n`;
+  msg += `🌙 晚课: ${s.nightHours.toFixed(1)}小时\n`;
   msg += `📊 合计: ${(s.dayGroupHours + s.dayOneOnOneHours + s.nightHours).toFixed(1)}小时\n\n`;
   msg += '📖 课程明细(节):\n';
   Object.entries(courseStats).sort((a,b) => b[1] - a[1]).forEach(([c, n]) => {
