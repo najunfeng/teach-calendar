@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>扫码打开</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body { font-family: -apple-system, sans-serif; text-align: center; padding: 40px 20px; background: white; }
+h1 { font-size: 24px; }
+.qr { width: 250px; height: 250px; margin: 20px auto; background: #f0f0f0; display: flex; align-items: center; justify-content: center; }
+</style>
+</head>
+<body>
+  <h1>📸 扫码打开</h1>
+  <p>用另一部手机扫这个码</p>
+  <div class="qr">
+    <div id="qrcode"></div>
+  </div>
+  <p>或者直接输入:</p>
+  <p style="font-size:20px;font-weight:600;color:#4A90D9">http://192.168.2.2:8000</p>
+  
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>new QRCode(document.getElementById("qrcode"), "http://192.168.2.2:8000");</script>
+</body>
+</html>
