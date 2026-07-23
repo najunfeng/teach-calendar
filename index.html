@@ -163,13 +163,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 
 <!-- 统计条 -->
 <div class="stats-bar" id="statsBar">
-  <div class="stats-item">📚 课时: <span class="num" id="totalClasses">0</span></div>
+  <div class="stats-item">📚 总课时: <span class="num" id="totalClasses">0</span></div>
   <div class="stats-item">🏫 铁西: <span class="num" id="txCount">0</span></div>
   <div class="stats-item">🏫 和平: <span class="num" id="hpCount">0</span></div>
   <div class="stats-item">🏫 皇姑: <span class="num" id="hgCount">0</span></div>
-  <div class="stats-item">📗 班课+一对二: <span class="num" id="dayGroupCount">0</span></div>
-  <div class="stats-item">📘 一对一: <span class="num" id="dayOneOnOneCount">0</span></div>
-  <div class="stats-item">🌙 晚间: <span class="num" id="nightCount">0</span></div>
+  <div class="stats-item">📗 17:30前班课+一对二: <span class="num" id="dayGroupCount">0</span>h</div>
+  <div class="stats-item">📘 17:30前一對一: <span class="num" id="dayOneOnOneCount">0</span>h</div>
+  <div class="stats-item">🌙 17:30后总课时: <span class="num" id="nightCount">0</span>h</div>
 </div>
 
 <!-- 蒙版 -->
@@ -520,27 +520,77 @@ function changeMonth(delta) {
 }
 
 // ===== 统计 =====
-function isNightTime(record) {
-  if (!record.timeNote) return false;
-  const parts = record.timeNote.split('-');
-  if (parts.length < 2) return false;
-  const startHour = parseInt(parts[0].split(':')[0]);
-  const startMin = parseInt(parts[0].split(':')[1] || '0');
-  return startHour > 17 || (startHour === 17 && startMin >= 30);
+// ===== 时间分割统计 =====
+// 17:30 分割点 = 17.5 小时
+const SPLIT_HOUR = 17.5;
+
+// 解析 timeNote（如 "09:30-12:00"）为小时数，返回 { startHour, endHour }
+function parseTimeNote(timeNote) {
+  if (!timeNote) return null;
+  const parts = timeNote.split('-');
+  if (parts.length !== 2) return null;
+  const startParts = parts[0].split(':').map(Number);
+  const endParts = parts[1].split(':').map(Number);
+  if (startParts.length < 2 || endParts.length < 2) return null;
+  const start = startParts[0] + startParts[1] / 60;
+  const end = endParts[0] + endParts[1] / 60;
+  return { start, end };
 }
 
-function isDaytime(record) {
-  return !isNightTime(record);
+// 解析 duration 字符串（如 "2.5小时"）为小时数
+function parseDuration(duration) {
+  if (!duration) return 0;
+  const num = parseFloat(duration);
+  return isNaN(num) ? 0 : num;
 }
 
-function getDayRecords(records) {
-  // 上午+下午的课时（排除晚上）
-  return records.filter(r => {
-    const slotKey = Object.keys(allData).find(k => allData[k] === r);
-    if (!slotKey) return true;
-    const slot = slotKey.split('_').pop();
-    return slot === 'am' || slot === 'pm';
-  });
+// 对一条记录，按 17:30 分割计算三个统计值
+function splitRecordHours(record) {
+  let before1730 = 0;  // 17:30 之前的课时
+  let after1730 = 0;   // 17:30 之后的课时
+  
+  const times = parseTimeNote(record.timeNote);
+  
+  if (times) {
+    // 有精确时间备注 → 按时间点分割
+    const { start, end } = times;
+    const totalHours = end - start;
+    
+    if (end <= SPLIT_HOUR) {
+      // 全部在 17:30 之前
+      before1730 = totalHours;
+    } else if (start >= SPLIT_HOUR) {
+      // 全部在 17:30 之后
+      after1730 = totalHours;
+    } else {
+      // 跨越 17:30
+      before1730 = SPLIT_HOUR - start;
+      after1730 = end - SPLIT_HOUR;
+    }
+  } else {
+    // 没有时间备注 → 根据时间段(slot)判断
+    const totalHours = parseDuration(record.duration);
+    const slot = getRecordSlot(record);
+    if (slot === 'night') {
+      // 晚间 slot → 全部算 17:30 后
+      after1730 = totalHours;
+    } else {
+      // 上午/下午 → 全部算 17:30 前
+      before1730 = totalHours;
+    }
+  }
+  
+  return { before1730, after1730 };
+}
+
+// 获取记录的 slot（am/pm/night）
+function getRecordSlot(record) {
+  for (const key of Object.keys(allData)) {
+    if (allData[key] === record) {
+      return key.split('_').pop();
+    }
+  }
+  return null;
 }
 
 function calcStats(records) {
@@ -549,17 +599,27 @@ function calcStats(records) {
   const hp = records.filter(r => r.campus === '和平').length;
   const hg = records.filter(r => r.campus === '皇姑').length;
   
-  // 日间（上午+下午）班课+一对二
-  const dayRecords = records.filter(r => !isNightTime(r));
-  const dayGroup = dayRecords.filter(r => r.type === '班课' || r.type === '一对二').length;
+  let dayGroupHours = 0;     // 17:30前班课+一对二 总小时数
+  let dayOneOnOneHours = 0;  // 17:30前一對一 总小时数
+  let nightHours = 0;        // 17:30后所有课程 总小时数
   
-  // 日间一对一
-  const dayOneOnOne = dayRecords.filter(r => r.type === '一对一').length;
+  for (const record of records) {
+    const { before1730, after1730 } = splitRecordHours(record);
+    const type = record.type;
+    
+    // 17:30 后的部分 → 统一算晚间
+    nightHours += after1730;
+    
+    // 17:30 前的部分 → 按课程类型分类
+    if (type === '一对一') {
+      dayOneOnOneHours += before1730;
+    } else {
+      // 班课 或 一对二 → 算到日间班课组
+      dayGroupHours += before1730;
+    }
+  }
   
-  // 晚间（17:30以后）
-  const night = records.filter(r => isNightTime(r)).length;
-  
-  return { total, tx, hp, hg, dayGroup, dayOneOnOne, night };
+  return { total, tx, hp, hg, dayGroupHours, dayOneOnOneHours, nightHours };
 }
 
 function showStats() {
@@ -567,18 +627,21 @@ function showStats() {
   const allRecords = Object.values(allData);
   const s = calcStats(allRecords);
 
-  // 按课程统计
+  // 按课程统计（按节次）
   const courseStats = {};
   allRecords.forEach(r => {
     courseStats[r.course] = (courseStats[r.course] || 0) + 1;
   });
 
-  let msg = `📊 总课程数: ${s.total}节\n\n`;
+  let msg = `📊 教学日历统计\n\n`;
+  msg += `📚 总记录数: ${s.total}节\n`;
   msg += `🏫 铁西: ${s.tx}节 | 和平: ${s.hp}节 | 皇姑: ${s.hg}节\n\n`;
-  msg += `📗 日间班课+一对二: ${s.dayGroup}节\n`;
-  msg += `📘 日间一对一: ${s.dayOneOnOne}节\n`;
-  msg += `🌙 晚间课时(17:30后): ${s.night}节\n\n`;
-  msg += '📖 课程明细:\n';
+  msg += `── 按时间分割统计 ──\n`;
+  msg += `📗 17:30前 班课+一对二: ${s.dayGroupHours.toFixed(1)}小时\n`;
+  msg += `📘 17:30前 一对一: ${s.dayOneOnOneHours.toFixed(1)}小时\n`;
+  msg += `🌙 17:30后 总课时: ${s.nightHours.toFixed(1)}小时\n`;
+  msg += `📊 总课时: ${(s.dayGroupHours + s.dayOneOnOneHours + s.nightHours).toFixed(1)}小时\n\n`;
+  msg += '📖 课程明细(节):\n';
   Object.entries(courseStats).sort((a,b) => b[1] - a[1]).forEach(([c, n]) => {
     msg += `  ${c}: ${n}节\n`;
   });
@@ -601,9 +664,9 @@ function updateStats() {
   document.getElementById('txCount').textContent = s.tx;
   document.getElementById('hpCount').textContent = s.hp;
   document.getElementById('hgCount').textContent = s.hg;
-  document.getElementById('dayGroupCount').textContent = s.dayGroup;
-  document.getElementById('dayOneOnOneCount').textContent = s.dayOneOnOne;
-  document.getElementById('nightCount').textContent = s.night;
+  document.getElementById('dayGroupCount').textContent = s.dayGroupHours.toFixed(1);
+  document.getElementById('dayOneOnOneCount').textContent = s.dayOneOnOneHours.toFixed(1);
+  document.getElementById('nightCount').textContent = s.nightHours.toFixed(1);
 }
 
 // ===== 数据导入导出 =====
