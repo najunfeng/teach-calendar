@@ -262,8 +262,8 @@ function renderSlotEditor(slot) {
     return arr.map(c => `<span class="chip-select ${c === val ? 'chip-selected' : ''}" onclick="toggleChipSel('${prefix}_${c}')" id="${prefix}_${c}">${c}</span>`).join('');
   }
   
-  const hourOpts = ['','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22'];
-  const minOpts = ['','00','05','10','15','20','25','30','35','40','45','50','55'];
+  const hourOpts = ['','08','09','10','11','12','13','14','15','16','17','18','19','20','21'];
+  const minOpts = ['','00','15','30','45'];
   
   const html = `
     <div style="margin-top:4px">
