@@ -163,13 +163,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
 
 <!-- 统计条 -->
 <div class="stats-bar" id="statsBar">
-  <div class="stats-item">📚 总课时: <span class="num" id="totalClasses">0</span></div>
-  <div class="stats-item">🏫 铁西: <span class="num" id="txCount">0</span></div>
-  <div class="stats-item">🏫 和平: <span class="num" id="hpCount">0</span></div>
-  <div class="stats-item">🏫 皇姑: <span class="num" id="hgCount">0</span></div>
-  <div class="stats-item">📗 17:30前班课+一对二: <span class="num" id="dayGroupCount">0</span>h</div>
-  <div class="stats-item">📘 17:30前一對一: <span class="num" id="dayOneOnOneCount">0</span>h</div>
-  <div class="stats-item">🌙 17:30后总课时: <span class="num" id="nightCount">0</span>h</div>
+  <div class="stats-item">📗 白天班课+一对二: <span class="num" id="dayGroupCount">0</span>h</div>
+  <div class="stats-item">📘 白天一对一: <span class="num" id="dayOneOnOneCount">0</span>h</div>
+  <div class="stats-item">🌙 晚间: <span class="num" id="nightCount">0</span>h</div>
 </div>
 
 <!-- 蒙版 -->
@@ -594,11 +590,6 @@ function getRecordSlot(record) {
 }
 
 function calcStats(records) {
-  const total = records.length;
-  const tx = records.filter(r => r.campus === '铁西').length;
-  const hp = records.filter(r => r.campus === '和平').length;
-  const hg = records.filter(r => r.campus === '皇姑').length;
-  
   let dayGroupHours = 0;     // 17:30前班课+一对二 总小时数
   let dayOneOnOneHours = 0;  // 17:30前一對一 总小时数
   let nightHours = 0;        // 17:30后所有课程 总小时数
@@ -619,7 +610,7 @@ function calcStats(records) {
     }
   }
   
-  return { total, tx, hp, hg, dayGroupHours, dayOneOnOneHours, nightHours };
+  return { dayGroupHours, dayOneOnOneHours, nightHours };
 }
 
 function showStats() {
@@ -634,13 +625,10 @@ function showStats() {
   });
 
   let msg = `📊 教学日历统计\n\n`;
-  msg += `📚 总记录数: ${s.total}节\n`;
-  msg += `🏫 铁西: ${s.tx}节 | 和平: ${s.hp}节 | 皇姑: ${s.hg}节\n\n`;
-  msg += `── 按时间分割统计 ──\n`;
-  msg += `📗 17:30前 班课+一对二: ${s.dayGroupHours.toFixed(1)}小时\n`;
-  msg += `📘 17:30前 一对一: ${s.dayOneOnOneHours.toFixed(1)}小时\n`;
-  msg += `🌙 17:30后 总课时: ${s.nightHours.toFixed(1)}小时\n`;
-  msg += `📊 总课时: ${(s.dayGroupHours + s.dayOneOnOneHours + s.nightHours).toFixed(1)}小时\n\n`;
+  msg += `📗 白天 班课+一对二: ${s.dayGroupHours.toFixed(1)}小时\n`;
+  msg += `📘 白天 一对一: ${s.dayOneOnOneHours.toFixed(1)}小时\n`;
+  msg += `🌙 晚间: ${s.nightHours.toFixed(1)}小时\n`;
+  msg += `📊 合计: ${(s.dayGroupHours + s.dayOneOnOneHours + s.nightHours).toFixed(1)}小时\n\n`;
   msg += '📖 课程明细(节):\n';
   Object.entries(courseStats).sort((a,b) => b[1] - a[1]).forEach(([c, n]) => {
     msg += `  ${c}: ${n}节\n`;
@@ -660,10 +648,6 @@ function updateStats() {
 
   const records = Object.values(monthData);
   const s = calcStats(records);
-  document.getElementById('totalClasses').textContent = s.total;
-  document.getElementById('txCount').textContent = s.tx;
-  document.getElementById('hpCount').textContent = s.hp;
-  document.getElementById('hgCount').textContent = s.hg;
   document.getElementById('dayGroupCount').textContent = s.dayGroupHours.toFixed(1);
   document.getElementById('dayOneOnOneCount').textContent = s.dayOneOnOneHours.toFixed(1);
   document.getElementById('nightCount').textContent = s.nightHours.toFixed(1);
