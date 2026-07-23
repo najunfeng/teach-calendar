@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="教学日历">
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234A90D9'/%3E%3Ctext x='50' y='68' font-size='50' text-anchor='middle' fill='white'%3E📅%3C/text%3E%3C/svg%3E">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json?v=4">
 <title>教学日历</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -189,11 +189,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
   </div>
 
   <!-- 时段标签 -->
-  <div class="time-slot-tabs" style="display:flex;margin:8px 12px;gap:6px">
-    <button class="slot-tab" data-slot="am" onclick="switchSlot('am')" style="flex:1;padding:10px 4px;border-radius:12px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:#e8e8ed;color:#555">🌅<br>上午</button>
-    <button class="slot-tab" data-slot="pm" onclick="switchSlot('pm')" style="flex:1;padding:10px 4px;border-radius:12px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:#e8e8ed;color:#555">☀️<br>下午</button>
-    <button class="slot-tab" data-slot="extra" onclick="switchSlot('extra')" style="flex:1;padding:10px 4px;border-radius:12px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:#e8e8ed;color:#555">➕<br>加课</button>
-    <button class="slot-tab" data-slot="night" onclick="switchSlot('night')" style="flex:1;padding:10px 4px;border-radius:12px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:#e8e8ed;color:#555">🌙<br>晚课</button>
+  <div class="slot-tab-bar">
+    <button class="slot-tab active-tab" data-slot="am" onclick="switchSlot('am')">🌅<br>上午</button>
+    <button class="slot-tab" data-slot="pm" onclick="switchSlot('pm')">☀️<br>下午</button>
+    <button class="slot-tab" data-slot="extra" onclick="switchSlot('extra')">➕<br>加课</button>
+    <button class="slot-tab" data-slot="night" onclick="switchSlot('night')">🌙<br>晚课</button>
   </div>
 
   <!-- 当前时段编辑区 -->
@@ -211,16 +211,11 @@ let currentEditSlot = 'am';
 let slotFormData = {};  // 暂存各时段表单数据
 
 function switchSlot(slot) {
-  // 保存当前时段数据
   saveCurrentSlotData();
   currentEditSlot = slot;
   renderSlotEditor(slot);
-  // 更新标签样式
   document.querySelectorAll('.slot-tab').forEach(el => {
-    const isActive = el.dataset.slot === slot;
-    el.style.background = isActive ? '#4A90D9' : '#e8e8ed';
-    el.style.color = isActive ? 'white' : '#555';
-    el.style.fontWeight = isActive ? '700' : '500';
+    el.classList.toggle('active-tab', el.dataset.slot === slot);
   });
 }
 
@@ -376,6 +371,17 @@ function clearDay() {
 // ===== 样式补充 =====
 const styleExtra = document.createElement('style');
 styleExtra.textContent = `
+.slot-tab-bar { display:flex;margin:8px 12px;gap:6px; }
+.slot-tab {
+  flex:1; padding:10px 4px; border-radius:12px; border:2px solid transparent;
+  font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s;
+  background:#e8e8ed; color:#555; -webkit-tap-highlight-color:transparent;
+}
+.slot-tab:active { transform:scale(0.95); }
+.active-tab {
+  background:#4A90D9 !important; color:white !important; border-color:#357ABD !important;
+  font-weight:700 !important; box-shadow:0 2px 8px rgba(74,144,217,0.3);
+}
 .chip-group { display:flex;flex-wrap:wrap;gap:6px; }
 .chip-select {
   padding:8px 14px; border-radius:20px; background:#f0f0f5; border:1.5px solid transparent;
@@ -385,10 +391,10 @@ styleExtra.textContent = `
 .chip-select:active { transform:scale(0.95); }
 .chip-selected { background:#4A90D9 !important; color:white !important; border-color:#357ABD !important; font-weight:600 !important; }
 @media (prefers-color-scheme:dark) {
+  .slot-tab { background:#2c2c2e; color:#8e8e93; border-color:transparent; }
+  .active-tab { background:#5AA3FF !important; color:white !important; border-color:#3D8BFF !important; }
   .chip-select { background:#2c2c2e; color:#e5e5ea; border-color:transparent; }
   .chip-selected { background:#5AA3FF !important; color:white !important; border-color:#3D8BFF !important; }
-  .slot-tab { background:#2c2c2e !important; color:#8e8e93 !important; }
-  .slot-tab[style*="background: #4A90D9"] { background:#5AA3FF !important; }
   #slotEditorContainer select { background:#2c2c2e !important; border-color:#38383a !important; color:#e5e5ea !important; }
   #slotEditorContainer textarea { background:#2c2c2e !important; border-color:#38383a !important; color:#e5e5ea !important; }
 }

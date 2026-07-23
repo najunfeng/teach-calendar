@@ -1,17 +1,15 @@
-const CACHE = 'teach-calendar-v1';
-const URLS = ['index.html', 'manifest.json'];
-
+const CACHE = 'teach-calendar-v4';
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(URLS)));
   self.skipWaiting();
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(['index.html?v=4','manifest.json?v=4'])));
 });
-
 self.addEventListener('activate', e => {
   e.waitUntil(clients.claim());
+  // 清除旧缓存
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))));
 });
-
 self.addEventListener('fetch', e => {
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).catch(() => new Response('离线', {status: 503})))
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });
