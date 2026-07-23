@@ -181,199 +181,219 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica
   <button class="add-btn" onclick="openEditor()">+ 添加课程</button>
 </div>
 
-<!-- 编辑面板 - 三时段同屏编辑 -->
+<!-- 编辑面板 - 标签页切换 -->
 <div class="edit-panel" id="editPanel">
   <div class="panel-header">
     <h2 id="editTitle">编辑课程</h2>
     <button class="close-btn" onclick="closeAll()">✕</button>
   </div>
-  <div id="slotEditorContainer"></div>
+
+  <!-- 时段标签 -->
+  <div class="time-slot-tabs" style="display:flex;margin:8px 12px;gap:6px">
+    <button class="slot-tab" data-slot="am" onclick="switchSlot('am')" style="flex:1;padding:10px 4px;border-radius:12px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:#e8e8ed;color:#555">🌅<br>上午</button>
+    <button class="slot-tab" data-slot="pm" onclick="switchSlot('pm')" style="flex:1;padding:10px 4px;border-radius:12px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:#e8e8ed;color:#555">☀️<br>下午</button>
+    <button class="slot-tab" data-slot="extra" onclick="switchSlot('extra')" style="flex:1;padding:10px 4px;border-radius:12px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:#e8e8ed;color:#555">➕<br>加课</button>
+    <button class="slot-tab" data-slot="night" onclick="switchSlot('night')" style="flex:1;padding:10px 4px;border-radius:12px;border:none;font-size:13px;font-weight:500;cursor:pointer;background:#e8e8ed;color:#555">🌙<br>晚课</button>
+  </div>
+
+  <!-- 当前时段编辑区 -->
+  <div id="slotEditorContainer" style="padding:0 16px"></div>
+
   <div style="padding:0 16px">
-    <button class="save-btn" onclick="saveAllSlots()">💾 保存全部</button>
+    <button class="save-btn" onclick="saveAllSlots()">💾 保存全部时段</button>
     <button class="delete-btn" onclick="clearDay()">🗑 清空当日</button>
   </div>
 </div>
 
 <script>
-// ===== 三时段同屏编辑模板 =====
-function buildSlotEditorHTML(dateKey, slot, record, slotIndex) {
-  const name = SLOT_NAMES[slot];
-  const icon = SLOT_ICONS[slot];
-  const prefix = `slot_${slot}`;
-  
-  // 构建课程选项
-  const courseChips = COURSES.map(c => 
-    `<span class="select-chip ${record && record.course === c ? 'selected' : ''}" onclick="toggleChip('${prefix}_course', '${c}')">${c}</span>`
-  ).join('');
-  
-  const typeChips = COURSE_TYPES.map(t => 
-    `<span class="select-chip ${record && record.type === t ? 'selected' : ''}" onclick="toggleChip('${prefix}_type', '${t}')">${t}</span>`
-  ).join('');
-  
-  const durChips = DURATIONS.map(d => 
-    `<span class="select-chip ${record && record.duration === d ? 'selected' : ''}" onclick="toggleChip('${prefix}_dur', '${d}')">${d}</span>`
-  ).join('');
-  
-  const campChips = CAMPUSES.map(c => 
-    `<span class="select-chip ${record && record.campus === c ? 'selected' : ''}" onclick="toggleChip('${prefix}_campus', '${c}')">${c}</span>`
-  ).join('');
-  
-  // 时间备注
-  let sh = '', sm = '', eh = '', em = '';
-  if (record && record.timeNote) {
-    const parts = record.timeNote.split('-');
-    if (parts.length === 2) {
-      const sp = parts[0].split(':'), ep = parts[1].split(':');
-      sh = sp[0] || ''; sm = sp[1] || ''; eh = ep[0] || ''; em = ep[1] || '';
-    }
-  }
-  
-  const hoursOpts = ['','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22'];
-  const minsOpts = ['','00','05','10','15','20','25','30','35','40','45','50','55'];
-  
-  const startHOpts = hoursOpts.map(h => `<option value="${h}" ${sh === h ? 'selected' : ''}>${h || '--'}</option>`).join('');
-  const startMOpts = minsOpts.map(m => `<option value="${m}" ${sm === m ? 'selected' : ''}>${m || '--'}</option>`).join('');
-  const endHOpts = hoursOpts.map(h => `<option value="${h}" ${eh === h ? 'selected' : ''}>${h || '--'}</option>`).join('');
-  const endMOpts = minsOpts.map(m => `<option value="${m}" ${em === m ? 'selected' : ''}>${m || '--'}</option>`).join('');
-  
-  const remark = record ? (record.remark || '') : '';
-  
-  return `
-    <div class="slot-editor-card" style="margin:8px 16px;padding:12px;border-radius:12px;background:#f5f5f7;">
-      <div style="font-size:15px;font-weight:600;margin-bottom:8px">${icon} ${name}</div>
-      
-      <div style="font-size:12px;color:#8e8e93;margin-bottom:4px">📖 课程</div>
-      <div class="select-row" id="${prefix}_course">${courseChips}</div>
-      
-      <div style="display:flex;gap:4px;margin-bottom:8px">
-        <div style="flex:1">
-          <div style="font-size:12px;color:#8e8e93;margin-bottom:4px">👥 类型</div>
-          <div class="select-row" id="${prefix}_type">${typeChips}</div>
-        </div>
-        <div style="flex:1">
-          <div style="font-size:12px;color:#8e8e93;margin-bottom:4px">⏱ 时长</div>
-          <div class="select-row" id="${prefix}_dur">${durChips}</div>
-        </div>
-      </div>
-      
-      <div style="font-size:12px;color:#8e8e93;margin-bottom:4px">🏫 校区</div>
-      <div class="select-row" id="${prefix}_campus">${campChips}</div>
-      
-      <div style="font-size:12px;color:#8e8e93;margin-bottom:4px">🕐 时间</div>
-      <div class="time-row">
-        <select id="${prefix}_sh" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid #e5e5ea;background:white;font-size:13px">${startHOpts}</select>
-        <span style="font-size:16px;line-height:36px">:</span>
-        <select id="${prefix}_sm" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid #e5e5ea;background:white;font-size:13px">${startMOpts}</select>
-        <span style="font-size:16px;line-height:36px">—</span>
-        <select id="${prefix}_eh" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid #e5e5ea;background:white;font-size:13px">${endHOpts}</select>
-        <span style="font-size:16px;line-height:36px">:</span>
-        <select id="${prefix}_em" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid #e5e5ea;background:white;font-size:13px">${endMOpts}</select>
-      </div>
-      
-      <div style="font-size:12px;color:#8e8e93;margin-bottom:4px;margin-top:8px">📝 备注</div>
-      <textarea id="${prefix}_remark" class="remark-input" rows="1" placeholder="选填" style="font-size:13px;padding:8px">${remark}</textarea>
-    </div>
-  `;
-}
+// ===== 时段切换编辑 =====
+let currentEditSlot = 'am';
+let slotFormData = {};  // 暂存各时段表单数据
 
-function toggleChip(groupId, value) {
-  const container = document.getElementById(groupId);
-  if (!container) return;
-  container.querySelectorAll('.select-chip').forEach(c => {
-    c.classList.toggle('selected', c.textContent === value);
+function switchSlot(slot) {
+  // 保存当前时段数据
+  saveCurrentSlotData();
+  currentEditSlot = slot;
+  renderSlotEditor(slot);
+  // 更新标签样式
+  document.querySelectorAll('.slot-tab').forEach(el => {
+    const isActive = el.dataset.slot === slot;
+    el.style.background = isActive ? '#4A90D9' : '#e8e8ed';
+    el.style.color = isActive ? 'white' : '#555';
+    el.style.fontWeight = isActive ? '700' : '500';
   });
 }
 
-function getSlotValue(prefix, field) {
-  const sel = document.querySelector(`#${prefix}_${field} .select-chip.selected`);
+function saveCurrentSlotData() {
+  const prefix = `slot_${currentEditSlot}`;
+  const course = getSlotChip(prefix, 'course');
+  const type = getSlotChip(prefix, 'type');
+  const dur = getSlotChip(prefix, 'dur');
+  const campus = getSlotChip(prefix, 'campus');
+  const sh = document.getElementById(`${prefix}_sh`)?.value || '';
+  const sm = document.getElementById(`${prefix}_sm`)?.value || '';
+  const eh = document.getElementById(`${prefix}_eh`)?.value || '';
+  const em = document.getElementById(`${prefix}_em`)?.value || '';
+  const remark = document.getElementById(`${prefix}_remark`)?.value || '';
+  slotFormData[currentEditSlot] = { course, type, dur, campus, sh, sm, eh, em, remark };
+}
+
+function getSlotChip(prefix, field) {
+  const sel = document.querySelector(`#${prefix}_${field} .chip-selected`);
   return sel ? sel.textContent : null;
+}
+
+function renderSlotEditor(slot) {
+  const record = allData[getSlotKey(selectedDate, slot)] || null;
+  const saved = slotFormData[slot] || {};
+  const prefix = `slot_${slot}`;
+  
+  const courseVal = saved.course || (record ? record.course : null);
+  const typeVal = saved.type || (record ? record.type : null);
+  const durVal = saved.dur || (record ? record.duration : null);
+  const campusVal = saved.campus || (record ? record.campus : null);
+  
+  let sh = saved.sh || '', sm = saved.sm || '', eh = saved.eh || '', em = saved.em || '';
+  if (!saved.course && record && record.timeNote) {
+    const parts = record.timeNote.split('-');
+    if (parts.length === 2) {
+      sh = parts[0].split(':')[0] || ''; sm = parts[0].split(':')[1] || '';
+      eh = parts[1].split(':')[0] || ''; em = parts[1].split(':')[1] || '';
+    }
+  }
+  const remarkVal = saved.remark !== undefined ? saved.remark : (record ? (record.remark || '') : '');
+  
+  function chips(arr, val) {
+    return arr.map(c => `<span class="chip-select ${c === val ? 'chip-selected' : ''}" onclick="toggleChipSel('${prefix}_${c}')" id="${prefix}_${c}">${c}</span>`).join('');
+  }
+  
+  const hourOpts = ['','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22'];
+  const minOpts = ['','00','05','10','15','20','25','30','35','40','45','50','55'];
+  
+  const html = `
+    <div style="margin-top:4px">
+      <div style="font-size:13px;color:#666;margin-bottom:5px;font-weight:600">📖 课程名称</div>
+      <div class="chip-group" id="${prefix}_course">${chips(COURSES, courseVal)}</div>
+      
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <div style="flex:1">
+          <div style="font-size:13px;color:#666;margin-bottom:5px;font-weight:600">👥 类型</div>
+          <div class="chip-group" id="${prefix}_type">${chips(COURSE_TYPES, typeVal)}</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:13px;color:#666;margin-bottom:5px;font-weight:600">⏱ 时长</div>
+          <div class="chip-group" id="${prefix}_dur">${chips(DURATIONS, durVal)}</div>
+        </div>
+      </div>
+      
+      <div style="font-size:13px;color:#666;margin-bottom:5px;margin-top:12px;font-weight:600">🏫 校区</div>
+      <div class="chip-group" id="${prefix}_campus">${chips(CAMPUSES, campusVal)}</div>
+      
+      <div style="font-size:13px;color:#666;margin-bottom:5px;margin-top:12px;font-weight:600">🕐 时间</div>
+      <div class="time-row" style="display:flex;gap:6px">
+        <select id="${prefix}_sh" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #d1d1d6;background:#f9f9fb;font-size:15px;text-align:center">${hourOpts.map(h => `<option value="${h}" ${sh===h?'selected':''}>${h||'--'}</option>`).join('')}</select>
+        <span style="font-size:18px;line-height:40px">:</span>
+        <select id="${prefix}_sm" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #d1d1d6;background:#f9f9fb;font-size:15px;text-align:center">${minOpts.map(m => `<option value="${m}" ${sm===m?'selected':''}>${m||'--'}</option>`).join('')}</select>
+        <span style="font-size:18px;line-height:40px">—</span>
+        <select id="${prefix}_eh" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #d1d1d6;background:#f9f9fb;font-size:15px;text-align:center">${hourOpts.map(h => `<option value="${h}" ${eh===h?'selected':''}>${h||'--'}</option>`).join('')}</select>
+        <span style="font-size:18px;line-height:40px">:</span>
+        <select id="${prefix}_em" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #d1d1d6;background:#f9f9fb;font-size:15px;text-align:center">${minOpts.map(m => `<option value="${m}" ${em===m?'selected':''}>${m||'--'}</option>`).join('')}</select>
+      </div>
+      
+      <div style="font-size:13px;color:#666;margin-bottom:5px;margin-top:12px;font-weight:600">📝 备注</div>
+      <textarea id="${prefix}_remark" rows="2" style="width:100%;padding:10px 12px;border-radius:10px;border:1.5px solid #d1d1d6;background:#f9f9fb;font-size:14px;resize:none;font-family:inherit">${remarkVal}</textarea>
+    </div>
+  `;
+  document.getElementById('slotEditorContainer').innerHTML = html;
+}
+
+// Chip 点击切换（高对比度）
+function toggleChipSel(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  // 获取同组所有 chip
+  const parent = el.parentElement;
+  parent.querySelectorAll('.chip-select').forEach(c => {
+    c.classList.remove('chip-selected');
+    c.style.background = '#f0f0f5';
+    c.style.color = '#333';
+    c.style.borderColor = 'transparent';
+  });
+  el.classList.add('chip-selected');
+  el.style.background = '#4A90D9';
+  el.style.color = 'white';
+  el.style.borderColor = '#357ABD';
 }
 
 function openEditor(dateKey) {
   if (dateKey) selectedDate = dateKey;
-  
   const parts = selectedDate.split('-');
   const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
   const weekStr = ['日','一','二','三','四','五','六'][d.getDay()];
-  document.getElementById('editTitle').textContent = `${parseInt(parts[1])}月${parseInt(parts[2])}日 周${weekStr} 课程`;
+  document.getElementById('editTitle').textContent = `${parseInt(parts[1])}月${parseInt(parts[2])}日 周${weekStr}`;
   
-  // 生成三个时段的编辑区
-  let html = '';
-  SLOTS.forEach((slot, idx) => {
-    const key = getSlotKey(selectedDate, slot);
-    html += buildSlotEditorHTML(selectedDate, slot, allData[key] || null, idx);
-  });
-  
-  document.getElementById('slotEditorContainer').innerHTML = html;
-  
-  // 关闭详情，打开编辑
+  slotFormData = {};
+  currentEditSlot = 'am';
+  switchSlot('am');
   document.getElementById('dayDetail').classList.remove('show');
   document.getElementById('editPanel').classList.add('show');
 }
 
 function saveAllSlots() {
+  saveCurrentSlotData();
   let saved = 0;
   SLOTS.forEach(slot => {
-    const prefix = `slot_${slot}`;
-    const course = getSlotValue(prefix, 'course');
-    if (!course || course === '休息') {
-      // 没选课程或选了休息 → 跳过或清空
-      if (course === '休息') {
-        const type = getSlotValue(prefix, 'type');
-        const campus = getSlotValue(prefix, 'campus');
-        const sh = document.getElementById(`${prefix}_sh`).value;
-        const sm = document.getElementById(`${prefix}_sm`).value;
-        const eh = document.getElementById(`${prefix}_eh`).value;
-        const em = document.getElementById(`${prefix}_em`).value;
-        let timeNote = (sh && sm && eh && em) ? `${sh}:${sm}-${eh}:${em}` : '';
-        const remark = document.getElementById(`${prefix}_remark`).value.trim();
-        
-        const key = getSlotKey(selectedDate, slot);
-        if (course === '休息') {
-          allData[key] = { course: '休息', type: '', duration: '', campus: '', timeNote, remark, updatedAt: new Date().toISOString() };
-          saved++;
-        }
-      }
-      return;
-    }
-    
-    const type = getSlotValue(prefix, 'type');
-    const duration = getSlotValue(prefix, 'dur');
-    const campus = getSlotValue(prefix, 'campus');
-    
-    if (!type) return;
-    if (!campus) return;
-    
-    const sh = document.getElementById(`${prefix}_sh`).value;
-    const sm = document.getElementById(`${prefix}_sm`).value;
-    const eh = document.getElementById(`${prefix}_eh`).value;
-    const em = document.getElementById(`${prefix}_em`).value;
-    let timeNote = (sh && sm && eh && em) ? `${sh}:${sm}-${eh}:${em}` : '';
-    const remark = document.getElementById(`${prefix}_remark`).value.trim();
-    
+    const data = slotFormData[slot];
+    if (!data || !data.course) return;
+    let timeNote = (data.sh && data.sm && data.eh && data.em) ? `${data.sh}:${data.sm}-${data.eh}:${data.em}` : '';
     const key = getSlotKey(selectedDate, slot);
-    allData[key] = { course, type, duration, campus, timeNote, remark, updatedAt: new Date().toISOString() };
+    allData[key] = {
+      course: data.course,
+      type: data.type || '',
+      duration: data.dur || '',
+      campus: data.campus || '',
+      timeNote,
+      remark: data.remark || '',
+      updatedAt: new Date().toISOString()
+    };
     saved++;
   });
-  
   saveDataToStorage();
   closeAll();
   renderCalendar();
   showSaveTip(`✅ 已保存 ${saved} 个时段`);
 }
 
-// 清空当日
 function clearDay() {
-  if (!confirm('确定清空当天的所有课程记录吗？')) return;
-  SLOTS.forEach(slot => {
-    const key = getSlotKey(selectedDate, slot);
-    delete allData[key];
-  });
+  if (!confirm('确定清空当天所有课程吗？')) return;
+  SLOTS.forEach(slot => delete allData[getSlotKey(selectedDate, slot)]);
   saveDataToStorage();
   closeAll();
   renderCalendar();
   showSaveTip('🗑 已清空');
 }
+
+// ===== 样式补充 =====
+const styleExtra = document.createElement('style');
+styleExtra.textContent = `
+.chip-group { display:flex;flex-wrap:wrap;gap:6px; }
+.chip-select {
+  padding:8px 14px; border-radius:20px; background:#f0f0f5; border:1.5px solid transparent;
+  font-size:13px; cursor:pointer; transition:all 0.15s; color:#333; font-weight:500;
+  -webkit-tap-highlight-color:transparent;
+}
+.chip-select:active { transform:scale(0.95); }
+.chip-selected { background:#4A90D9 !important; color:white !important; border-color:#357ABD !important; font-weight:600 !important; }
+@media (prefers-color-scheme:dark) {
+  .chip-select { background:#2c2c2e; color:#e5e5ea; border-color:transparent; }
+  .chip-selected { background:#5AA3FF !important; color:white !important; border-color:#3D8BFF !important; }
+  .slot-tab { background:#2c2c2e !important; color:#8e8e93 !important; }
+  .slot-tab[style*="background: #4A90D9"] { background:#5AA3FF !important; }
+  #slotEditorContainer select { background:#2c2c2e !important; border-color:#38383a !important; color:#e5e5ea !important; }
+  #slotEditorContainer textarea { background:#2c2c2e !important; border-color:#38383a !important; color:#e5e5ea !important; }
+}
+`;
+document.head.appendChild(styleExtra);
 
 // ===== 数据 =====
 const COURSES = ['办公', 'WPS二级', 'CAD', '3DMax', '酷家乐', '草图', '室内理论', '实训', '室内AI绘图', '电脑基础', '补课', 'EN渲染', 'D5渲染', '休息'];
